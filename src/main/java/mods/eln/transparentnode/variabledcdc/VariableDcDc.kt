@@ -18,7 +18,9 @@ import mods.eln.node.transparent.*
 import mods.eln.sim.ElectricalLoad
 import mods.eln.sim.IProcess
 import mods.eln.sim.ThermalLoad
+import mods.eln.sim.mna.component.CurrentSource
 import mods.eln.sim.mna.component.VoltageSource
+import mods.eln.sim.mna.process.LegacyTransformerInterSystemProcess
 import mods.eln.sim.mna.process.TransformerInterSystemProcess
 import mods.eln.sim.nbt.NbtElectricalGateInput
 import mods.eln.sim.nbt.NbtElectricalLoad
@@ -143,10 +145,10 @@ class VariableDcDcElement(transparentNode: TransparentNode, descriptor: Transpar
 
     val control = NbtElectricalGateInput("control")
 
-    val primaryVoltageSource = VoltageSource("primaryVoltageSource")
+    val primaryCurrentSource = CurrentSource("primaryCurrentSource")
     val secondaryVoltageSource = VoltageSource("secondaryVoltageSource")
 
-    val interSystemProcess = TransformerInterSystemProcess(primaryLoad, secondaryLoad, primaryVoltageSource, secondaryVoltageSource)
+    val interSystemProcess = TransformerInterSystemProcess(primaryLoad, secondaryLoad, primaryCurrentSource, secondaryVoltageSource)
 
     val inventory = TransparentNodeElementInventory(4, 64, this)
 
@@ -162,7 +164,7 @@ class VariableDcDcElement(transparentNode: TransparentNode, descriptor: Transpar
         electricalLoadList.add(primaryLoad)
         electricalLoadList.add(secondaryLoad)
         electricalLoadList.add(control)
-        electricalComponentList.add(primaryVoltageSource)
+        electricalComponentList.add(primaryCurrentSource)
         electricalComponentList.add(secondaryVoltageSource)
         val exp = WorldExplosion(this).machineExplosion()
         slowProcessList.add(primaryVoltageWatchdog.set(primaryLoad).set(exp))
@@ -212,7 +214,7 @@ class VariableDcDcElement(transparentNode: TransparentNode, descriptor: Transpar
         return if (side == front.right())
             Utils.plotVolt("US+:", secondaryLoad.u) + Utils.plotAmpere("IS+:", -secondaryLoad.current)
         else
-            Utils.plotVolt("UP+:", primaryLoad.u) + Utils.plotAmpere("IP+:", primaryVoltageSource.current) + Utils.plotVolt("  US+:", secondaryLoad.u) + Utils.plotAmpere("IS+:", secondaryVoltageSource.current)
+            Utils.plotVolt("UP+:", primaryLoad.u) + Utils.plotAmpere("IP+:", primaryCurrentSource.current) + Utils.plotVolt("  US+:", secondaryLoad.u) + Utils.plotAmpere("IS+:", secondaryVoltageSource.current)
     }
 
     override fun thermoMeterString(side: Direction): String? {
@@ -220,9 +222,9 @@ class VariableDcDcElement(transparentNode: TransparentNode, descriptor: Transpar
     }
 
     override fun initialize() {
-        primaryVoltageSource.connectTo(primaryLoad, null)
+        primaryCurrentSource.connectTo(primaryLoad, null)
         secondaryVoltageSource.connectTo(secondaryLoad, null)
-        electricalComponentList.add(primaryVoltageSource)
+        electricalComponentList.add(primaryCurrentSource)
         electricalComponentList.add(secondaryVoltageSource)
         interSystemProcess.ratio = 1.0
         computeInventory()

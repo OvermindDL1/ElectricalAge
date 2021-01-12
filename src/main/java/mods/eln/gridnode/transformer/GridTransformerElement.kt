@@ -10,7 +10,7 @@ import mods.eln.node.transparent.TransparentNode
 import mods.eln.node.transparent.TransparentNodeDescriptor
 import mods.eln.sim.ElectricalLoad
 import mods.eln.sim.mna.component.VoltageSource
-import mods.eln.sim.mna.process.TransformerInterSystemProcess
+import mods.eln.sim.mna.process.LegacyTransformerInterSystemProcess
 import mods.eln.sim.nbt.NbtElectricalLoad
 import mods.eln.sim.nbt.NbtThermalLoad
 import mods.eln.sim.process.destruct.ThermalLoadWatchDog
@@ -25,7 +25,7 @@ class GridTransformerElement(node: TransparentNode, descriptor: TransparentNodeD
     var secondaryLoad = NbtElectricalLoad("secondaryLoad")
     var primaryVoltageSource = VoltageSource("primaryVoltageSource", primaryLoad, null)
     var secondaryVoltageSource = VoltageSource("secondaryVoltageSource", secondaryLoad, null)
-    var interSystemProcess = TransformerInterSystemProcess(primaryLoad, secondaryLoad, primaryVoltageSource, secondaryVoltageSource)
+    var interSystemProcess = LegacyTransformerInterSystemProcess(primaryLoad, secondaryLoad, primaryVoltageSource, secondaryVoltageSource)
     internal var desc: GridTransformerDescriptor = descriptor as GridTransformerDescriptor
     internal var maxCurrent = desc.cableDescriptor.electricalMaximalCurrent.toFloat()
 

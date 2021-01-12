@@ -6,7 +6,6 @@ import mods.eln.sim.mna.component.*;
 import mods.eln.sim.mna.misc.*;
 import mods.eln.sim.mna.process.TransformerInterSystemProcess;
 import mods.eln.sim.mna.state.State;
-import mods.eln.sim.mna.state.VoltageState;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.QRDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -267,53 +266,53 @@ public class SubSystem {
         RootSystem root = new RootSystem(0.05, 1000);
         SubSystem ss1 = new SubSystem(root, 0.05);
         SubSystem ss2 = new SubSystem(root, 0.05);
+        SubSystem ss3 = new SubSystem(root, 0.05);
 
         root.systems.add(ss1);
         root.systems.add(ss2);
+        root.systems.add(ss3);
 
         State s1 = new State(),
             s2 = new State(),
             s3 = new State(),
-            s4 = new State();
+            s4 = new State(),
+            s5 = new State(),
+            s6 = new State();
         ss1.addState(s1);
         ss1.addState(s2);
         ss2.addState(s3);
         ss2.addState(s4);
+        ss3.addState(s5);
+        ss3.addState(s6);
 
-        VoltageSource e1 = new VoltageSource("e1", s1, null).setU(5);
-        VoltageSource e2 = new VoltageSource("e2", null, s4).setU(0);
+        VoltageSource e1 = new VoltageSource("e1", s1, null).setU(10);
+        VoltageSource e2 = new VoltageSource("e2", null, s6).setU(0);
         Resistor r1 = new Resistor().setR(100);
-        Resistor r2 = new Resistor().setR(300);
+        Resistor r2 = new Resistor().setR(400);
+        Resistor r3 = new Resistor().setR(100);
 
         ss1.addComponent(e1);
         ss1.addComponent(r1.connectTo(s1,s2));
-        ss2.addComponent(e2);
         ss2.addComponent(r2.connectTo(s3,s4));
+        ss3.addComponent(r3.connectTo(s5,s6));
+        ss3.addComponent(e2);
 
-        CurrentSource magicIn = new CurrentSource("magicIn", s2, null).setCurrent(0);
-        VoltageSource magicOut = new VoltageSource("magicOut", s3, null).setU(0);
+        CurrentSource magicIn1 = new CurrentSource("magicIn1", s2, null).setCurrent(0);
+        VoltageSource magicOut1 = new VoltageSource("magicOut1", s3, null).setU(0);
+        CurrentSource magicIn2 = new CurrentSource("magicIn2", s4, null).setCurrent(0);
+        VoltageSource magicOut2 = new VoltageSource("magicOut2", s5, null).setU(0);
 
-        ss1.addComponent(magicIn);
-        ss2.addComponent(magicOut);
+        ss1.addComponent(magicIn1);
+        ss2.addComponent(magicOut1);
+        ss2.addComponent(magicIn2);
+        ss3.addComponent(magicOut2);
 
-        double ratio = 1;
-        root.addProcess((IRootSystemPreStepProcess) () -> {
-            Th thIn = ss1.getTh(s2, magicIn);
-            Th thOut = ss2.getTh(s3, magicOut);
-
-            if (thIn.isHighImpedance() || thOut.isHighImpedance()) {
-                magicIn.setCurrent(0);
-                magicOut.setU(0);
-            } else {
-                thIn.U *= ratio;
-                thIn.R *= ratio * ratio;
-
-                double Vd = thOut.U - thIn.U;
-                double Rt = thIn.R + thOut.R;
-                magicIn.setCurrent(Vd / Rt * ratio);
-                magicOut.setU(-thOut.R * Vd / Rt + thOut.U);
-            }
-        });
+        TransformerInterSystemProcess proc1 = new TransformerInterSystemProcess(s2, s3, magicIn1, magicOut1);
+        TransformerInterSystemProcess proc2 = new TransformerInterSystemProcess(s4, s5, magicIn2, magicOut2);
+        proc1.setRatio(1);
+        proc2.setRatio(1);
+        root.addProcess(proc1);
+        root.addProcess(proc2);
 
         root.step();
 
@@ -321,11 +320,16 @@ public class SubSystem {
         System.out.println("s1: V = " + s1.state);
         System.out.println("r1: Vd = " + r1.getU() + ", I = " + r1.getI());
         System.out.println("s2: V = " + s2.state);
-        System.out.println("magicIn: V = " + magicIn.getU() + ", I = " + magicIn.getCurrent());
-        System.out.println("magicOut: V = " + magicOut.getU() + ", I = " + magicOut.getCurrent());
+        System.out.println("magicIn1: V = " + magicIn1.getU() + ", I = " + magicIn1.getCurrent());
+        System.out.println("magicOut1: V = " + magicOut1.getU() + ", I = " + magicOut1.getCurrent());
         System.out.println("s3: V = " + s3.state);
         System.out.println("r2: Vd = " + r2.getU() + ", I = " + r2.getI());
         System.out.println("s4: V = " + s4.state);
+        System.out.println("magicIn2: V = " + magicIn2.getU() + ", I = " + magicIn2.getCurrent());
+        System.out.println("magicOut2: V = " + magicOut2.getU() + ", I = " + magicOut2.getCurrent());
+        System.out.println("s5: V = " + s5.state);
+        System.out.println("r3: Vd = " + r3.getU() + ", I = " + r3.getI());
+        System.out.println("s6: V = " + s6.state);
         System.out.println("e2: V = " + e2.getU() + ", I = " + e2.getI());
     }
 
@@ -416,9 +420,9 @@ public class SubSystem {
         double Rth = (otherU - originalU) / (originalI - otherI);
         double Uth;
         //if(Double.isInfinite(d.Rth)) d.Rth = Double.MAX_VALUE;
-        if (Rth > 10000000000000000000.0 || Rth < 0) {
+        if (Rth > 1e19 || Rth < 0) {
             Uth = 0;
-            Rth = 10000000000000000000.0;
+            Rth = 1e19;
         } else {
             Uth = otherU + Rth * otherI;
         }

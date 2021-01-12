@@ -13,7 +13,7 @@ import mods.eln.node.transparent.TransparentNodeDescriptor
 import mods.eln.sim.ElectricalLoad
 import mods.eln.sim.ThermalLoad
 import mods.eln.sim.mna.component.VoltageSource
-import mods.eln.sim.mna.process.TransformerInterSystemProcess
+import mods.eln.sim.mna.process.LegacyTransformerInterSystemProcess
 import mods.eln.sim.nbt.NbtElectricalLoad
 import mods.eln.sim.nbt.NbtThermalLoad
 import mods.eln.sim.process.destruct.ThermalLoadWatchDog
@@ -28,7 +28,7 @@ data class Transformer(
     val secondaryLoad: NbtElectricalLoad,
     val primaryVoltageSource: VoltageSource,
     val secondaryVoltageSource: VoltageSource,
-    val interSystemProcess: TransformerInterSystemProcess,
+    val interSystemProcess: LegacyTransformerInterSystemProcess,
     val voltageSecondaryWatchdog: VoltageStateWatchDog
 )
 
@@ -80,7 +80,7 @@ class ElectricalPoleElement(node: TransparentNode, descriptor: TransparentNodeDe
             val secondaryLoad = NbtElectricalLoad("secondaryLoad")
             val primaryVoltageSource = VoltageSource("primaryVoltageSource", electricalLoad, null)
             val secondaryVoltageSource = VoltageSource("secondaryVoltageSource", secondaryLoad, null)
-            val interSystemProcess = TransformerInterSystemProcess(electricalLoad, secondaryLoad, primaryVoltageSource, secondaryVoltageSource)
+            val interSystemProcess = LegacyTransformerInterSystemProcess(electricalLoad, secondaryLoad, primaryVoltageSource, secondaryVoltageSource)
             val voltageSecondaryWatchdog = VoltageStateWatchDog()
 
             trafo = Transformer(

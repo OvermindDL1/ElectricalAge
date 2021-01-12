@@ -37,7 +37,7 @@ import mods.eln.sim.ElectricalLoad
 import mods.eln.sim.IProcess
 import mods.eln.sim.ThermalLoad
 import mods.eln.sim.mna.component.VoltageSource
-import mods.eln.sim.mna.process.TransformerInterSystemProcess
+import mods.eln.sim.mna.process.LegacyTransformerInterSystemProcess
 import mods.eln.sim.nbt.NbtElectricalLoad
 import mods.eln.sim.process.destruct.VoltageStateWatchDog
 import mods.eln.sim.process.destruct.WorldExplosion
@@ -161,7 +161,7 @@ class LegacyDcDcElement(transparentNode: TransparentNode, descriptor: Transparen
     val primaryVoltageSource = VoltageSource("primaryVoltageSource")
     val secondaryVoltageSource = VoltageSource("secondaryVoltageSource")
 
-    val interSystemProcess = TransformerInterSystemProcess(primaryLoad, secondaryLoad, primaryVoltageSource, secondaryVoltageSource)
+    val interSystemProcess = LegacyTransformerInterSystemProcess(primaryLoad, secondaryLoad, primaryVoltageSource, secondaryVoltageSource)
 
     val inventory = TransparentNodeElementInventory(4, 64, this)
 

@@ -250,10 +250,7 @@ public class RootSystem {
     }
 
     public void step() {
-        Profiler profiler = new Profiler();
-        profiler.add("Generate");
         generate();
-        profiler.add("interSystem");
         for (int idx = 0; idx < interSystemOverSampling; idx++) {
             for (IRootSystemPreStepProcess p : processPre) {
                 p.rootSystemPreStepProcess();
@@ -267,15 +264,12 @@ public class RootSystem {
 		}
 		Utils.println("");*/
 
-        profiler.add("stepCalc");
         for (SubSystem s : systems) {
             s.stepCalc();
         }
-        profiler.add("stepFlush");
         for (SubSystem s : systems) {
             s.stepFlush();
         }
-        profiler.add("simProcessFlush");
         for (ISubSystemProcessFlush p : processF) {
             p.simProcessFlush();
         }
@@ -287,7 +281,6 @@ public class RootSystem {
 		}
 		Utils.println("");*/
 
-        profiler.stop();
         //Utils.println(profiler);
     }
 

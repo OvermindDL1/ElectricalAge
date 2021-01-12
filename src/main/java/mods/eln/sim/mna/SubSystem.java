@@ -3,10 +3,8 @@ package mods.eln.sim.mna;
 import mods.eln.misc.Profiler;
 import mods.eln.misc.Utils;
 import mods.eln.sim.mna.component.*;
-import mods.eln.sim.mna.misc.IDestructor;
-import mods.eln.sim.mna.misc.ISubSystemProcessFlush;
-import mods.eln.sim.mna.misc.ISubSystemProcessI;
-import mods.eln.sim.mna.misc.MnaConst;
+import mods.eln.sim.mna.misc.*;
+import mods.eln.sim.mna.process.TransformerInterSystemProcess;
 import mods.eln.sim.mna.state.State;
 import mods.eln.sim.mna.state.VoltageState;
 import org.apache.commons.math3.linear.MatrixUtils;
@@ -225,24 +223,22 @@ public class SubSystem {
     }
 
     public double solve(State pin) {
-        //Profiler profiler = new Profiler();
         if (!matrixValid) {
             generateMatrix();
         }
 
         if (!singularMatrix) {
-            for (int y = 0; y < stateCount; y++) {
+            for (int y = 0; y < stateCount; y++)
                 Idata[y] = 0;
-            }
-            for (ISubSystemProcessI p : processI) {
+
+            for (ISubSystemProcessI p : processI)
                 p.simProcessI(this);
-            }
 
             int idx2 = pin.getId();
             double stack = 0;
-            for (int idx = 0; idx < stateCount; idx++) {
+            for (int idx = 0; idx < stateCount; idx++)
                 stack += AInvdata[idx2][idx] * Idata[idx];
-            }
+
             return stack;
         }
         return 0;
@@ -268,36 +264,69 @@ public class SubSystem {
     }
 
     public static void main(String[] args) {
-//		SubSystem s = new SubSystem(null, 0.1);
-//		VoltageState n1, n2;
-//		VoltageSource u1;
-//		Resistor r1, r2;
-//
-//		s.addState(n1 = new VoltageState());
-//		s.addState(n2 = new VoltageState());
-//
-//		//s.addComponent((u1 = new VoltageSource()).setU(1).connectTo(n1, null));
-//
-//		s.addComponent((r1 = new Resistor()).setR(10).connectTo(n1, n2));
-//		s.addComponent((r2 = new Resistor()).setR(20).connectTo(n2, null));
-//
-//		s.step();
-//		s.step();
+        RootSystem root = new RootSystem(0.05, 1000);
+        SubSystem ss1 = new SubSystem(root, 0.05);
+        SubSystem ss2 = new SubSystem(root, 0.05);
 
-        SubSystem s = new SubSystem(null, 0.1);
-        VoltageState n1, n2;
-        CurrentSource cs1;
-        Resistor r1;
+        root.systems.add(ss1);
+        root.systems.add(ss2);
 
-        s.addState(n1 = new VoltageState());
+        State s1 = new State(),
+            s2 = new State(),
+            s3 = new State(),
+            s4 = new State();
+        ss1.addState(s1);
+        ss1.addState(s2);
+        ss2.addState(s3);
+        ss2.addState(s4);
 
-        s.addComponent((cs1 = new CurrentSource("cs1")).setCurrent(0.01).connectTo(n1, null));
-        s.addComponent((r1 = new Resistor()).setR(10).connectTo(n1, null));
+        VoltageSource e1 = new VoltageSource("e1", s1, null).setU(5);
+        VoltageSource e2 = new VoltageSource("e2", null, s4).setU(0);
+        Resistor r1 = new Resistor().setR(100);
+        Resistor r2 = new Resistor().setR(300);
 
-        s.step();
+        ss1.addComponent(e1);
+        ss1.addComponent(r1.connectTo(s1,s2));
+        ss2.addComponent(e2);
+        ss2.addComponent(r2.connectTo(s3,s4));
 
-        System.out.println("R: U = " + r1.getU() + ", I = " + r1.getI());
-        System.out.println("CS: U = " + cs1.getU());
+        CurrentSource magicIn = new CurrentSource("magicIn", s2, null).setCurrent(0);
+        VoltageSource magicOut = new VoltageSource("magicOut", s3, null).setU(0);
+
+        ss1.addComponent(magicIn);
+        ss2.addComponent(magicOut);
+
+        double ratio = 1;
+        root.addProcess((IRootSystemPreStepProcess) () -> {
+            Th thIn = ss1.getTh(s2, magicIn);
+            Th thOut = ss2.getTh(s3, magicOut);
+
+            if (thIn.isHighImpedance() || thOut.isHighImpedance()) {
+                magicIn.setCurrent(0);
+                magicOut.setU(0);
+            } else {
+                thIn.U *= ratio;
+                thIn.R *= ratio * ratio;
+
+                double Vd = thOut.U - thIn.U;
+                double Rt = thIn.R + thOut.R;
+                magicIn.setCurrent(Vd / Rt * ratio);
+                magicOut.setU(-thOut.R * Vd / Rt + thOut.U);
+            }
+        });
+
+        root.step();
+
+        System.out.println("e1: V = " + e1.getU() + ", I = " + e1.getI());
+        System.out.println("s1: V = " + s1.state);
+        System.out.println("r1: Vd = " + r1.getU() + ", I = " + r1.getI());
+        System.out.println("s2: V = " + s2.state);
+        System.out.println("magicIn: V = " + magicIn.getU() + ", I = " + magicIn.getCurrent());
+        System.out.println("magicOut: V = " + magicOut.getU() + ", I = " + magicOut.getCurrent());
+        System.out.println("s3: V = " + s3.state);
+        System.out.println("r2: Vd = " + r2.getU() + ", I = " + r2.getI());
+        System.out.println("s4: V = " + s4.state);
+        System.out.println("e2: V = " + e2.getU() + ", I = " + e2.getI());
     }
 
     public boolean containe(State state) {
@@ -363,6 +392,14 @@ public class SubSystem {
         public boolean isHighImpedance() {
             return R > 1e8;
         }
+
+        @Override
+        public String toString() {
+            return "Th{" +
+                "R=" + R +
+                ", U=" + U +
+                '}';
+        }
     }
 
     public Th getTh(State d, VoltageSource voltageSource) {
@@ -399,6 +436,32 @@ public class SubSystem {
             th.R = MnaConst.highImpedance;
         }
 
+        return th;
+    }
+
+    public Th getTh(State d, CurrentSource currentSource) {
+        Th th = new Th();
+        double originalI = currentSource.getCurrent();
+
+        currentSource.setCurrent(1);
+        double n2p = d.getSubSystem().solve(d);
+
+        currentSource.setCurrent(-1);
+        double n2m = d.getSubSystem().solve(d);
+
+        th.U = (n2p + n2m) / 2;
+        th.R = n2p - th.U;
+
+        if(Double.isNaN(th.U)) {
+            th.U = 0;
+            th.R = MnaConst.highImpedance;
+        }
+        if (Double.isNaN(th.R)) {
+            th.U = 0;
+            th.R = MnaConst.highImpedance;
+        }
+
+        currentSource.setCurrent(originalI);
         return th;
     }
 

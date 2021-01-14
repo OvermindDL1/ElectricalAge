@@ -263,7 +263,7 @@ public class SubSystem {
     }
 
     public static void main(String[] args) {
-        RootSystem root = new RootSystem(0.05, 1000);
+        RootSystem root = new RootSystem(0.05, 1);
         SubSystem ss1 = new SubSystem(root, 0.05);
         SubSystem ss2 = new SubSystem(root, 0.05);
         SubSystem ss3 = new SubSystem(root, 0.05);
@@ -287,9 +287,9 @@ public class SubSystem {
 
         VoltageSource e1 = new VoltageSource("e1", s1, null).setU(10);
         VoltageSource e2 = new VoltageSource("e2", null, s6).setU(0);
-        Resistor r1 = new Resistor().setR(100);
-        Resistor r2 = new Resistor().setR(400);
-        Resistor r3 = new Resistor().setR(100);
+        Resistor r1 = new Resistor().setR(6.05e-1);
+        Resistor r2 = new Resistor().setR(1.01e-1);
+        Resistor r3 = new Resistor().setR(100.101);
 
         ss1.addComponent(e1);
         ss1.addComponent(r1.connectTo(s1,s2));
@@ -297,9 +297,9 @@ public class SubSystem {
         ss3.addComponent(r3.connectTo(s5,s6));
         ss3.addComponent(e2);
 
-        CurrentSource magicIn1 = new CurrentSource("magicIn1", s2, null).setCurrent(0);
+        VoltageSource magicIn1 = new VoltageSource("magicIn1", s2, null).setU(0);
         VoltageSource magicOut1 = new VoltageSource("magicOut1", s3, null).setU(0);
-        CurrentSource magicIn2 = new CurrentSource("magicIn2", s4, null).setCurrent(0);
+        VoltageSource magicIn2 = new VoltageSource("magicIn2", s4, null).setU(0);
         VoltageSource magicOut2 = new VoltageSource("magicOut2", s5, null).setU(0);
 
         ss1.addComponent(magicIn1);
@@ -309,8 +309,8 @@ public class SubSystem {
 
         TransformerInterSystemProcess proc1 = new TransformerInterSystemProcess(s2, s3, magicIn1, magicOut1);
         TransformerInterSystemProcess proc2 = new TransformerInterSystemProcess(s4, s5, magicIn2, magicOut2);
-        proc1.setRatio(1);
-        proc2.setRatio(1);
+        proc1.setRatio(4);
+        proc2.setRatio(0.25);
         root.addProcess(proc1);
         root.addProcess(proc2);
 
@@ -408,7 +408,7 @@ public class SubSystem {
 
     public Th getTh(State d, VoltageSource voltageSource) {
         Th th = new Th();
-        double originalU = d.state;
+        double originalU = voltageSource.getU();
 
         double otherU = originalU + 5;
         voltageSource.setU(otherU);

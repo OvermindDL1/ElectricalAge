@@ -23,6 +23,8 @@ import mods.eln.entity.ReplicatorEntity;
 import mods.eln.entity.ReplicatorPopProcess;
 import mods.eln.eventhandlers.ElnFMLEventsHandler;
 import mods.eln.eventhandlers.ElnForgeEventsHandler;
+import mods.eln.fluid.ElnFluidRegistry;
+import mods.eln.fluid.FluidRegistrationKt;
 import mods.eln.generic.*;
 import mods.eln.generic.genericArmorItem.ArmourType;
 import mods.eln.ghost.GhostBlock;
@@ -43,7 +45,6 @@ import mods.eln.item.regulator.RegulatorAnalogDescriptor;
 import mods.eln.item.regulator.RegulatorOnOffDescriptor;
 import mods.eln.mechanical.*;
 import mods.eln.misc.*;
-import mods.eln.misc.SeriesFunction;
 import mods.eln.node.NodeBlockEntity;
 import mods.eln.node.NodeManager;
 import mods.eln.node.NodeManagerNbt;
@@ -74,7 +75,6 @@ import mods.eln.simplenode.test.TestBlock;
 import mods.eln.sixnode.*;
 import mods.eln.sixnode.TreeResinCollector.TreeResinCollectorDescriptor;
 import mods.eln.sixnode.batterycharger.BatteryChargerDescriptor;
-import mods.eln.sixnode.CurrentSourceDescriptor;
 import mods.eln.sixnode.currentcable.CurrentCableDescriptor;
 import mods.eln.sixnode.diode.DiodeDescriptor;
 import mods.eln.sixnode.electricalalarm.ElectricalAlarmDescriptor;
@@ -97,7 +97,6 @@ import mods.eln.sixnode.electricalsensor.ElectricalSensorDescriptor;
 import mods.eln.sixnode.electricalsource.ElectricalSourceDescriptor;
 import mods.eln.sixnode.electricalswitch.ElectricalSwitchDescriptor;
 import mods.eln.sixnode.electricaltimeout.ElectricalTimeoutDescriptor;
-import mods.eln.sixnode.ElectricalVuMeterDescriptor;
 import mods.eln.sixnode.electricalwatch.ElectricalWatchDescriptor;
 import mods.eln.sixnode.electricalweathersensor.ElectricalWeatherSensorDescriptor;
 import mods.eln.sixnode.electricalwindsensor.ElectricalWindSensorDescriptor;
@@ -110,8 +109,6 @@ import mods.eln.sixnode.lampsupply.LampSupplyElement;
 import mods.eln.sixnode.logicgate.*;
 import mods.eln.sixnode.modbusrtu.ModbusRtuDescriptor;
 import mods.eln.sixnode.modbusrtu.ModbusTcpServer;
-import mods.eln.sixnode.PowerCapacitorSixDescriptor;
-import mods.eln.sixnode.PowerInductorSixDescriptor;
 import mods.eln.sixnode.powersocket.PowerSocketDescriptor;
 import mods.eln.sixnode.resistor.ResistorDescriptor;
 import mods.eln.sixnode.thermalcable.ThermalCableDescriptor;
@@ -130,8 +127,6 @@ import mods.eln.transparentnode.*;
 import mods.eln.transparentnode.autominer.AutoMinerDescriptor;
 import mods.eln.transparentnode.battery.BatteryDescriptor;
 import mods.eln.transparentnode.computercraftio.PeripheralHandler;
-import mods.eln.transparentnode.DcDcDescriptor;
-import mods.eln.transparentnode.LegacyDcDcDescriptor;
 import mods.eln.transparentnode.eggincubator.EggIncubatorDescriptor;
 import mods.eln.transparentnode.electricalantennarx.ElectricalAntennaRxDescriptor;
 import mods.eln.transparentnode.electricalantennatx.ElectricalAntennaTxDescriptor;
@@ -146,13 +141,12 @@ import mods.eln.transparentnode.powerinductor.PowerInductorDescriptor;
 import mods.eln.transparentnode.solarpanel.SolarPanelDescriptor;
 import mods.eln.transparentnode.teleporter.TeleporterDescriptor;
 import mods.eln.transparentnode.teleporter.TeleporterElement;
-import mods.eln.transparentnode.themralheatexchanger.*;
-import mods.eln.transparentnode.themralheatpump.*;
+import mods.eln.transparentnode.themralheatexchanger.ThermalHeatExchangerDescriptor;
+import mods.eln.transparentnode.themralheatpump.ThermalHeatPumpDescriptor;
 import mods.eln.transparentnode.thermaldissipatoractive.ThermalDissipatorActiveDescriptor;
 import mods.eln.transparentnode.thermaldissipatorpassive.ThermalDissipatorPassiveDescriptor;
 import mods.eln.transparentnode.turbine.TurbineDescriptor;
 import mods.eln.transparentnode.turret.TurretDescriptor;
-import mods.eln.transparentnode.VariableDcDcDescriptor;
 import mods.eln.transparentnode.waterturbine.WaterTurbineDescriptor;
 import mods.eln.transparentnode.windturbine.WindTurbineDescriptor;
 import mods.eln.wiki.Data;
@@ -176,32 +170,20 @@ import net.minecraft.launchwrapper.LogWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Vec3;
-import net.minecraft.world.IBlockAccess;
-import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
-import net.minecraftforge.fluids.*;
+import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.oredict.OreDictionary;
 import net.minecraftforge.oredict.ShapedOreRecipe;
 import net.minecraftforge.oredict.ShapelessOreRecipe;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import mods.eln.fluid.BlockElnFluid;
-import net.minecraftforge.fluids.Fluid;
-import net.minecraftforge.fluids.FluidRegistry;
-import mods.eln.fluid.BucketHandler;
-import mods.eln.fluid.ElnFluidRegistry;
-
-import cpw.mods.fml.common.Mod;
-
-import cpw.mods.fml.common.event.FMLInitializationEvent;
 
 import java.util.*;
+
 import static mods.eln.i18n.I18N.*;
 
 @SuppressWarnings({"SameParameterValue", "PointlessArithmeticExpression"})
@@ -1021,9 +1003,9 @@ public class Eln {
         if (isDevelopmentRun()) {
             Achievements.init();
         }
+
         //fluid registry
-        registerElnFluid("hotwater",Material.water,4644607, 1000, 1000, 0, 333, false, true);
-        registerElnFluid("coldwater",Material.water,4644607, 1000, 1000, 0, 288, false, true);
+        FluidRegistrationKt.registerElnFluids();
 
         MinecraftForge.EVENT_BUS.register(new ElnForgeEventsHandler());
         FMLCommonHandler.instance().bus().register(new ElnFMLEventsHandler());
@@ -1092,36 +1074,9 @@ public class Eln {
          */
     }
 
-    private static Map<ElnFluidRegistry, Fluid> fluids = new EnumMap(ElnFluidRegistry.class);
-    private static Map<ElnFluidRegistry, Block> fluidBlocks = new EnumMap(ElnFluidRegistry.class);
+    public static Map<ElnFluidRegistry, Fluid> fluids = new EnumMap(ElnFluidRegistry.class);
+    public static Map<ElnFluidRegistry, Block> fluidBlocks = new EnumMap(ElnFluidRegistry.class);
 
-    private static void registerElnFluid(String internalName, Material material, int color, int density, int viscosity, int luminosity, int temperature, boolean isGaseous, boolean isBucketable) {
-        String fluidName = "eln" + internalName.toLowerCase();
-        Fluid fluid = new Fluid(fluidName).setDensity(density).setViscosity(viscosity).setLuminosity(luminosity).setTemperature(temperature).setGaseous(isGaseous);
-        if (!FluidRegistry.registerFluid(fluid)) fluid = FluidRegistry.getFluid(fluidName);
-        Block fluidblock;
-        if (!fluid.canBePlacedInWorld()) {
-            fluidblock = new BlockElnFluid(internalName, fluid, material, color);
-            fluid.setBlock(fluidblock);
-            fluid.setUnlocalizedName(fluidblock.getUnlocalizedName());
-
-            //this sucks, but this is how IC2 does it, so this is how we're doing it. Please refactor.
-            //Originally I wanted it to be a list with K,V values but Java doesn't really support that as well as C# does
-            //Honestly i'm still not convinced this even works, but it's impossible to debug, so not much I can do there
-            fluids.put(ElnFluidRegistry.valueOf(internalName), fluid);
-            fluidBlocks.put(ElnFluidRegistry.valueOf(internalName), fluidblock);
-
-            if(isBucketable) {
-                ItemBucket FluidBucket = new ItemBucket(fluidblock);
-                FluidBucket.setUnlocalizedName(fluidblock.getUnlocalizedName() + "bucket").setContainerItem(Items.bucket);
-                FluidBucket.setTextureName(MODID + ":" + FluidBucket.getUnlocalizedName().substring(5));
-                GameRegistry.registerItem(FluidBucket, FluidBucket.getUnlocalizedName());
-                FluidContainerRegistry.registerFluidContainer(fluid, new ItemStack(FluidBucket), new ItemStack(Items.bucket));
-                BucketHandler.INSTANCE.buckets.put(fluidblock, FluidBucket);
-                MinecraftForge.EVENT_BUS.register(BucketHandler.INSTANCE);
-            }
-        }
-    }
 
     private void checkRecipe() {
         Utils.println("No recipe for ");
